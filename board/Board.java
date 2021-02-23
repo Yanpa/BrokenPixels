@@ -1,5 +1,9 @@
 package board;
 
+import phones.BrokenPhones;
+import phones.PhoneSerialNumber;
+import phones.Stack;
+import phones.WorkingPhones;
 import pixels.*;
 
 import javax.swing.*;
@@ -13,13 +17,19 @@ public class Board extends JFrame implements MouseListener {
     public Pixel[][] display;
     private Pixel firstPositionClicked, secondPositionClicked, thirdPositionClicked;
     private int[][] brokenParts = new int[sideSizeOfTheArray][sideSizeOfTheArray];
-    private int brokenPixel = 0, toBeBrokenPixel = 1, workingPixel = 2, numberOfClicks = 0;
+    private int brokenPixel = 0, toBeBrokenPixel = 1, workingPixel = 2, numberOfClicks = 0, numberOfBrokenPixels = 0;
+    PhoneSerialNumber phoneSerialNumber = new PhoneSerialNumber();
+    String serialNumber;
+    Stack<WorkingPhones> workingPhonesStack = new Stack<WorkingPhones>(5);
+    Stack<BrokenPhones> brokenPhonesStack = new Stack<BrokenPhones>(5);
 
     Random rand = new Random();
 
     public Board(){
         this.display = new Pixel[sideSizeOfTheArray][sideSizeOfTheArray];
         placingThePixelsOnDisplay();
+        serialNumber = phoneSerialNumber.theSerialNumber();
+
         this.setSize(680, 750);
         this.setVisible(true);
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
@@ -33,6 +43,8 @@ public class Board extends JFrame implements MouseListener {
                 renderPixel(g, row, col);
             }
         }
+        g.setFont(g.getFont().deriveFont(15f));
+        g.drawString(serialNumber, 310, 50);
     }
 
     @Override
@@ -40,15 +52,18 @@ public class Board extends JFrame implements MouseListener {
         int xCoordinate = (e.getX() - 20) / 10;
         int yCoordinate = (e.getY() - 80) / 10;
 
-        numberOfClicks++;
+        if((xCoordinate >= 0 && xCoordinate <=63) && (yCoordinate >= 0 && yCoordinate <=63)) numberOfClicks++;
         System.out.println("You clicked \nX: " + xCoordinate + "\n" + "Y: " + yCoordinate);
         System.out.println(numberOfClicks);
 
 
-        if(brokenParts[xCoordinate][yCoordinate] == brokenPixel){
-            display[xCoordinate][yCoordinate] = new BlackPixel(xCoordinate, yCoordinate);
-            repaint();
-            numberOfClicks = 0;
+        if((brokenParts[xCoordinate][yCoordinate] == brokenPixel) ||
+                (isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked) &&
+                        brokenParts[xCoordinate][yCoordinate] == toBeBrokenPixel)){
+                            display[xCoordinate][yCoordinate] = new BlackPixel(xCoordinate, yCoordinate);
+                            numberOfBrokenPixels++;
+                            repaint();
+                            numberOfClicks = 0;
         }
 
         if(numberOfClicks == 1)
@@ -58,12 +73,8 @@ public class Board extends JFrame implements MouseListener {
         if(numberOfClicks == 3)
             thirdPositionClicked = display[xCoordinate][yCoordinate];
 
-        if(isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked) && brokenParts[xCoordinate][yCoordinate] == toBeBrokenPixel){
-            display[xCoordinate][yCoordinate] = new BlackPixel(xCoordinate, yCoordinate);
-            repaint();
-            numberOfClicks = 0;
-        }
         if(isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked) && brokenParts[xCoordinate][yCoordinate] != toBeBrokenPixel) numberOfClicks = 0;
+        if(!isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked)) numberOfClicks = 0;
     }
 
     @Override
@@ -122,6 +133,28 @@ public class Board extends JFrame implements MouseListener {
     }
 
     private boolean isClickedThreeTimes(Pixel pixel1, Pixel pixel2, Pixel pixel3){
-        return ((pixel1 == pixel2) && (pixel1 == pixel3) && (pixel2 == pixel3));
+        return ((pixel1 == pixel2) && (pixel1 == pixel3));
+    }
+
+    private boolean moreThanHalfOfTheDisplayIsBroken(int count){
+        return count >= (sideSizeOfTheArray*sideSizeOfTheArray) / 2;
+    }
+
+    private void endGame(int numberOfIterations, int numberOfBrokenPixels){
+        while (numberOfIterations > 0){
+            if(moreThanHalfOfTheDisplayIsBroken(numberOfBrokenPixels)){
+                brokenPhonesStack.push(new BrokenPhones(serialNumber));
+                dispose();
+                numberOfIterations--;
+                new Board();
+            }
+
+            if(!moreThanHalfOfTheDisplayIsBroken(numberOfBrokenPixels)){
+                workingPhonesStack.push(new WorkingPhones(serialNumber));
+                dispose();
+                numberOfIterations--;
+                new Board();
+            }
+        }
     }
 }
