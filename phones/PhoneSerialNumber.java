@@ -11,6 +11,10 @@ public class PhoneSerialNumber {
 
     }
 
+    /**
+     * Method that returns random char[] that will be used as name for every created phone
+     * @return char[] name
+     */
     private char[] serialNumberCreator(){
         String creator = "qwer_tyuio123456pasdfghj90-klzxcvbnm78";
         char[] creation = new char[10];
@@ -21,6 +25,10 @@ public class PhoneSerialNumber {
         return creation;
     }
 
+    /**
+     *
+     * @return created char[] convertet to String so it'd be used properly in the program
+     */
     public String theSerialNumber(){
          return theSerialNumber = new String(serialNumberCreator());
     }

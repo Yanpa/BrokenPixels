@@ -1,9 +1,6 @@
 package board;
 
-import phones.BrokenPhones;
-import phones.PhoneSerialNumber;
-import phones.Stack;
-import phones.WorkingPhones;
+import phones.*;
 import pixels.*;
 
 import javax.swing.*;
@@ -17,7 +14,8 @@ public class Board extends JFrame implements MouseListener {
     public Pixel[][] display;
     private Pixel firstPositionClicked, secondPositionClicked, thirdPositionClicked;
     private int[][] brokenParts = new int[sideSizeOfTheArray][sideSizeOfTheArray];
-    private int brokenPixel = 0, toBeBrokenPixel = 1, workingPixel = 2, numberOfClicks = 0, numberOfBrokenPixels = 0;
+    private int numberOfClicks = 0, clickCounter = 0, numberOfBrokenPixels = 0, numberOfIterations = 5;
+    private final int BROKEN_PIXEL = 0, TO_BE_BROKEN_PIXEL = 1;
     PhoneSerialNumber phoneSerialNumber = new PhoneSerialNumber();
     String serialNumber;
     Stack<WorkingPhones> workingPhonesStack = new Stack<WorkingPhones>(5);
@@ -25,6 +23,9 @@ public class Board extends JFrame implements MouseListener {
 
     Random rand = new Random();
 
+    /**
+     * Creates a Constructor that sets the size of the game board and the serial number
+     */
     public Board(){
         this.display = new Pixel[sideSizeOfTheArray][sideSizeOfTheArray];
         placingThePixelsOnDisplay();
@@ -32,10 +33,26 @@ public class Board extends JFrame implements MouseListener {
 
         this.setSize(680, 750);
         this.setVisible(true);
+        this.setName("BrokenPixels");
         this.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
         this.addMouseListener(this);
+
+        if(numberOfIterations == 0){
+            System.out.println("Broken phones list: ");
+            for(int i = 0; i < brokenPhonesStack.stackLength(); i++){
+                System.out.println(brokenPhonesStack.get(i).getSerialNumber());
+            }
+            System.out.println("Working phones list: ");
+            for(int i = 0; i < workingPhonesStack.stackLength(); i++){
+                System.out.println(workingPhonesStack.get(i).getSerialNumber());
+            }
+        }
     }
 
+    /**
+     * Paints the board
+     * @param g
+     */
     @Override
     public void paint(Graphics g){
         for(int row = 0; row < sideSizeOfTheArray; row++){
@@ -52,19 +69,12 @@ public class Board extends JFrame implements MouseListener {
         int xCoordinate = (e.getX() - 20) / 10;
         int yCoordinate = (e.getY() - 80) / 10;
 
-        if((xCoordinate >= 0 && xCoordinate <=63) && (yCoordinate >= 0 && yCoordinate <=63)) numberOfClicks++;
+        if((xCoordinate >= 0 && xCoordinate <=63) && (yCoordinate >= 0 && yCoordinate <=63)){
+            clickCounter++;
+            numberOfClicks++;
+        }
         System.out.println("You clicked \nX: " + xCoordinate + "\n" + "Y: " + yCoordinate);
         System.out.println(numberOfClicks);
-
-
-        if((brokenParts[xCoordinate][yCoordinate] == brokenPixel) ||
-                (isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked) &&
-                        brokenParts[xCoordinate][yCoordinate] == toBeBrokenPixel)){
-                            display[xCoordinate][yCoordinate] = new BlackPixel(xCoordinate, yCoordinate);
-                            numberOfBrokenPixels++;
-                            repaint();
-                            numberOfClicks = 0;
-        }
 
         if(numberOfClicks == 1)
             firstPositionClicked = display[xCoordinate][yCoordinate];
@@ -73,8 +83,12 @@ public class Board extends JFrame implements MouseListener {
         if(numberOfClicks == 3)
             thirdPositionClicked = display[xCoordinate][yCoordinate];
 
-        if(isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked) && brokenParts[xCoordinate][yCoordinate] != toBeBrokenPixel) numberOfClicks = 0;
-        if(!isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked)) numberOfClicks = 0;
+        blackPixelsAndHowToFindThem(xCoordinate, yCoordinate, firstPositionClicked, secondPositionClicked, thirdPositionClicked);
+        if(isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked) && brokenParts[xCoordinate][yCoordinate] != TO_BE_BROKEN_PIXEL) numberOfClicks = 0;
+        if(theBoardIsUncovered(clickCounter) && numberOfIterations > 0){
+            numberOfIterations--;
+            theNextIteration(numberOfBrokenPixels);
+        }
     }
 
     @Override
@@ -97,6 +111,9 @@ public class Board extends JFrame implements MouseListener {
 
     }
 
+    /**
+     * Placing the pixels randomly
+     */
     private void placingThePixelsOnDisplay(){
         for(int row = 0; row < sideSizeOfTheArray; row++){
             for(int col = 0; col < sideSizeOfTheArray; col++){
@@ -132,29 +149,73 @@ public class Board extends JFrame implements MouseListener {
         }
     }
 
+    /**
+     * Checks if pixel is pressed three times without stopping
+     * @param pixel1
+     * @param pixel2
+     * @param pixel3
+     * @return
+     */
     private boolean isClickedThreeTimes(Pixel pixel1, Pixel pixel2, Pixel pixel3){
         return ((pixel1 == pixel2) && (pixel1 == pixel3));
     }
 
+    /**
+     * Checks if half of the display is covered in broken pixels
+     * @param count
+     * @return
+     */
     private boolean moreThanHalfOfTheDisplayIsBroken(int count){
         return count >= (sideSizeOfTheArray*sideSizeOfTheArray) / 2;
     }
 
-    private void endGame(int numberOfIterations, int numberOfBrokenPixels){
-        while (numberOfIterations > 0){
-            if(moreThanHalfOfTheDisplayIsBroken(numberOfBrokenPixels)){
-                brokenPhonesStack.push(new BrokenPhones(serialNumber));
-                dispose();
-                numberOfIterations--;
-                new Board();
-            }
+    /**
+     * Checks if the uncovered part of the screen is covered in black pixels
+     * @param count
+     * @return
+     */
+    private boolean theBoardIsUncovered(int count){
+        return count >= (float)(sideSizeOfTheArray*sideSizeOfTheArray) * 2.3f;
+    }
 
-            if(!moreThanHalfOfTheDisplayIsBroken(numberOfBrokenPixels)){
-                workingPhonesStack.push(new WorkingPhones(serialNumber));
-                dispose();
-                numberOfIterations--;
-                new Board();
-            }
+    /**
+     * Method that checks if it's time for the next iterations and if the current one has a broken phone or not
+     * @param numberOfBrokenPixels
+     */
+    private void theNextIteration(int numberOfBrokenPixels){
+        if(moreThanHalfOfTheDisplayIsBroken(numberOfBrokenPixels)){
+            brokenPhonesStack.push(new BrokenPhones(serialNumber));
+            Modal modal = new Modal(this,"One more for the trash", "You found another broken phone");
+            dispose();
+            numberOfIterations--;
+            new Board();
+        }
+
+        if(!moreThanHalfOfTheDisplayIsBroken(numberOfBrokenPixels)){
+            workingPhonesStack.push(new WorkingPhones(serialNumber));
+            Modal modal = new Modal(this,"Diamond in the rough", "Against all odds you found a working phone");
+            dispose();
+            numberOfIterations--;
+            new Board();
+        }
+    }
+
+    /**
+     * Places the black pixels on the board if the conditions are met
+     * @param xCoordinate
+     * @param yCoordinate
+     * @param firstPositionClicked
+     * @param secondPositionClicked
+     * @param thirdPositionClicked
+     */
+    private void blackPixelsAndHowToFindThem(int xCoordinate, int yCoordinate, Pixel firstPositionClicked, Pixel secondPositionClicked, Pixel thirdPositionClicked){
+        if((brokenParts[xCoordinate][yCoordinate] == BROKEN_PIXEL) ||
+                (isClickedThreeTimes(firstPositionClicked, secondPositionClicked, thirdPositionClicked) &&
+                        brokenParts[xCoordinate][yCoordinate] == TO_BE_BROKEN_PIXEL)){
+            display[xCoordinate][yCoordinate] = new BlackPixel(xCoordinate, yCoordinate);
+            numberOfBrokenPixels++;
+            repaint();
+            numberOfClicks = 0;
         }
     }
 }
